@@ -27,8 +27,38 @@ document.addEventListener("keydown", (event) => {
 const players = {};
 
 socket.on("currentPlayers", (serverPlayers) => {
-  Object.assign(players, serverPlayers); // Copy existing players
-  console.log(players)
+  Object.assign(players, serverPlayers); // copy existing players from server
+  console.log(players);
+  document.getElementById("player-container-master").innerHTML = "";
+  for (const key in players) {
+    document.getElementById("player-container-master").innerHTML += 
+      `<div class="player-container">
+        <div>
+          <span>
+            Player
+          </span>
+          <span class="stat-value">
+            ${players[key].id}
+          </span>
+        </div>
+        <div>
+          <span>
+            Score:
+          </span>
+          <span class="stat-value">
+            ${players[key].score}
+          </span>
+        </div>
+        <div>
+          <span>
+            Health:
+          </span>
+          <span class="stat-value">
+            ${players[key].health}
+          </span>
+        </div>
+      </div>`
+    }
 });
 
 socket.on("newPlayer", (serverPlayer) => {

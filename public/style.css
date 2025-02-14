@@ -3,24 +3,48 @@ html {
   width: 100vw;
   background-color: black;
   font-family: "Courier New", Courier, monospace;
-  color: #39e916ee
-};
+  color: white;
+  margin: 0;
+  padding: 0;
+}
 
 body {
   height: 100%;
   width: 100%;
-};
+  margin: 0;
+  padding: 0
+}
 
 main {
   height: 100%;
-  width: 100%;
+  width: 100%; 
   display: flex;
   flex-direction: column;
   align-items: center;
-};
+}
+
+#container {
+  height: 100%;
+  width: 100%;
+}
 
 canvas {
   display: block;
   background-color: black;
   border: 1px solid white;
-};
+  border-radius: 10px
+}
+
+.player-container {
+  display: flex;
+  justify-content: space-evenly;
+  margin-top: 10px;
+}
+
+.stat-value {
+  color: rgba(85, 255, 85, 0.933)
+}
+
+span {
+  font-size: 16px
+}

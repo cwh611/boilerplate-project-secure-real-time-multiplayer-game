@@ -83,10 +83,10 @@ io.on("connection", (socket) => {
 
     const player = players[socket.id];
 
-    if (direction === "left" && player.x - 5 >= 0) player.x -= 5;
-    if (direction === "right" && player.x + 5 <= canvas_width) player.x += 5;
-    if (direction === "up" && player.y - 5 >= 0) player.y -= 5;
-    if (direction === "down" && player.y + 5 <= canvas_height) player.y += 5;
+    if (direction === "left" && player.x - 10 >= 0) player.x -= 10;
+    if (direction === "right" && player.x + 10 <= canvas_width) player.x += 10;
+    if (direction === "up" && player.y - 10 >= 0) player.y -= 10;
+    if (direction === "down" && player.y + 10 <= canvas_height) player.y += 10;
     
     console.log(`Player ${socket.id} is moving ${direction}`);
 
