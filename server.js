@@ -53,6 +53,8 @@ const io = socket_io(server);
 const players = {};
 const asteroids = [];
 const stars = [];
+const ship_options = ["ship_1", "ship_2", "ship_3", "ship_4"];
+const asteroid_options = ["big", "med", "small"];
 const canvas_height = 600;
 const canvas_width = 800;
 
@@ -60,15 +62,20 @@ io.on("connection", (socket) => {
   
   console.log("Player connected: ", socket.id);
 
+  const assigned_ship = ship_options[Math.floor(Math.random() * ship_options.length)];
+  
   players[socket.id] = {
-    x: Math.random() * 400, 
-    y: 590, // (start near the bottom)
+    x: 400, 
+    y: 550, // (start near the bottom)
     id: socket.id,
     health: 100,
-    score: 0
+    score: 0,
+    ship: assigned_ship
   };
 
-  socket.emit("currentPlayers", players);
+  console.log("Player ship:", players[socket.id].ship)
+
+  io.emit("currentPlayers", players);
 
   socket.broadcast.emit("newPlayer", players[socket.id]);
   
@@ -96,14 +103,20 @@ io.on("connection", (socket) => {
 });
 
 const spawnAsteroid = () => {
+
+  const asteroid_type = asteroid_options[Math.floor(Math.random() * asteroid_options.length)];
+  
   const asteroid = {
     id: Date.now(), 
     x: Math.random() * canvas_width, 
     y: 0, 
-    speed: 2 + Math.random() * 3, // (random speed between 2-5)
+    speed: 2 + Math.random() * 3, // random btwn 2 and 5
+    type: asteroid_type,
+    size: asteroid_type === "big" ? 60 : asteroid_type === "med" ? 40 : 20
   };
 
   asteroids.push(asteroid);
+  
 };
 
 // Move asteroids downward
@@ -115,8 +128,8 @@ const updateAsteroids = () => {
     if (asteroid.y > canvas_height) {
       asteroids.splice(index, 1);
     }
-    const playerSize = 10; 
-    const asteroidSize = 10; 
+    const playerSize = 40; 
+    const asteroidSize = asteroid.size - 5; 
     for (const key in players) {
       const player = players[key];
       if (
@@ -161,8 +174,8 @@ const updateStars = () => {
     if (star.y > canvas_height) {
       stars.splice(index, 1);
     };
-    const playerSize = 10; 
-    const starSize = 5; 
+    const playerSize = 40; 
+    const starSize = 15; 
     for (const key in players) {
       const player = players[key];
       if (
