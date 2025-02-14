@@ -2,7 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const bodyParser = require('body-parser');
 const expect = require('chai');
-const socket = require('socket.io');
+const socket_io = require('socket.io');
 const cors = require('cors');
 
 const fccTestingRoutes = require('./routes/fcctesting.js');
@@ -16,19 +16,15 @@ app.use('/assets', express.static(process.cwd() + '/assets'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-//For FCC testing purposes and enables user to connect from outside the hosting platform
 app.use(cors({origin: '*'})); 
 
-// Index page (static HTML)
 app.route('/')
   .get(function (req, res) {
     res.sendFile(process.cwd() + '/views/index.html');
   }); 
 
-//For FCC testing purposes
 fccTestingRoutes(app);
     
-// 404 Not Found Middleware
 app.use(function(req, res, next) {
   res.status(404)
     .type('text')
@@ -37,7 +33,6 @@ app.use(function(req, res, next) {
 
 const portNum = process.env.PORT || 3000;
 
-// Set up server and tests
 const server = app.listen(portNum, () => {
   console.log(`Listening on port ${portNum}`);
   if (process.env.NODE_ENV==='test') {
@@ -53,4 +48,144 @@ const server = app.listen(portNum, () => {
   }
 });
 
-module.exports = app; // For testing
+const io = socket_io(server);
+
+const players = {};
+const asteroids = [];
+const stars = [];
+const canvas_height = 600;
+const canvas_width = 800;
+
+io.on("connection", (socket) => {
+  
+  console.log("Player connected: ", socket.id);
+
+  players[socket.id] = {
+    x: Math.random() * 400, 
+    y: 590, // (start near the bottom)
+    id: socket.id,
+    health: 100,
+    score: 0
+  };
+
+  socket.emit("currentPlayers", players);
+
+  socket.broadcast.emit("newPlayer", players[socket.id]);
+  
+  socket.on("move", (direction) => {
+
+    const player = players[socket.id];
+
+    if (direction === "left" && player.x - 5 >= 0) player.x -= 5;
+    if (direction === "right" && player.x + 5 <= canvas_width) player.x += 5;
+    if (direction === "up" && player.y - 5 >= 0) player.y -= 5;
+    if (direction === "down" && player.y + 5 <= canvas_height) player.y += 5;
+    
+    console.log(`Player ${socket.id} is moving ${direction}`);
+
+    io.emit("playerMoved", players[socket.id])
+    
+  });
+  
+  socket.on("disconnect", () => {
+    console.log(`Player disconnected: ${socket.id}`);
+    delete players[socket.id]; 
+    io.emit("removePlayer", socket.id); 
+  });
+  
+});
+
+const spawnAsteroid = () => {
+  const asteroid = {
+    id: Date.now(), 
+    x: Math.random() * canvas_width, 
+    y: 0, 
+    speed: 2 + Math.random() * 3, // (random speed between 2-5)
+  };
+
+  asteroids.push(asteroid);
+};
+
+// Move asteroids downward
+const updateAsteroids = () => {
+  asteroids.forEach((asteroid, index) => {
+    asteroid.y += asteroid.speed;
+
+    // Remove if out of bounds
+    if (asteroid.y > canvas_height) {
+      asteroids.splice(index, 1);
+    }
+    const playerSize = 10; 
+    const asteroidSize = 10; 
+    for (const key in players) {
+      const player = players[key];
+      if (
+        player.x < asteroid.x + asteroidSize &&
+        player.x + playerSize > asteroid.x &&
+        player.y < asteroid.y + asteroidSize &&
+        player.y + playerSize > asteroid.y
+      ) {
+          console.log(`Collision detected between player ${key} and asteroid ${asteroid.id}`);
+          asteroids.splice(index, 1);
+          player.health -= 10;
+          io.emit("currentPlayers", players)
+          console.log(`Player ${player.id} health: ${player.health}`)
+          break;
+      }
+    }
+  });
+
+  io.emit("updateAsteroids", asteroids); 
+  
+};
+
+// Spawn new asteroids every second
+setInterval(spawnAsteroid, 1000);
+
+// Update asteroids every 50ms
+setInterval(updateAsteroids, 50);
+
+const spwanStar = () => {
+  const star = {
+    id: Date.now(),
+    x: Math.random() * canvas_width,
+    y: 0,
+    speed: 1 + Math.random() * 2
+  };
+  stars.push(star)
+};
+
+const updateStars = () => {
+  stars.forEach((star, index) => {
+    star.y += star.speed;
+    if (star.y > canvas_height) {
+      stars.splice(index, 1);
+    };
+    const playerSize = 10; 
+    const starSize = 5; 
+    for (const key in players) {
+      const player = players[key];
+      if (
+        player.x < star.x + starSize &&
+        player.x + playerSize > star.x &&
+        player.y < star.y + starSize &&
+        player.y + playerSize > star.y
+      ) {
+          console.log(`Collision detected between player ${key} and star ${star.id}`);
+          stars.splice(index, 1);
+          player.score += 5;
+          io.emit("currentPlayers", players)
+          console.log(`Player ${player.id} score: ${player.score}`)
+          break;
+      }
+    }
+  });
+  
+  io.emit("updateStars", stars);
+  
+};
+
+setInterval(spwanStar, 2500);
+setInterval(updateStars, 50);
+
+module.exports = app;
