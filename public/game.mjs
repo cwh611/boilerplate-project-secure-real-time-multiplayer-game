@@ -1,167 +1,75 @@
-// import Player from './Player.mjs';
-// import Collectible from './Collectible.mjs';
+import Player from './Player.mjs';
+import Collectible from './Collectible.mjs';
 
 const socket = io();
 const canvas = document.getElementById('game-window');
 const context = canvas.getContext('2d');
 
+const canvas_height = 600;
+const canvas_width = 800;
+
+const player = new Player({x: 400, y: 550, score: 0, id: socket.id});
+socket.emit("new_player", player);
+
+let players = [];
+
 document.addEventListener("keydown", (event) => {
-  
-  let direction = null;
-  
-  if (event.key === "ArrowLeft" || event.key === "A") {
-      direction = "left";
-    } else if (event.key === "ArrowRight" || event.key === "D") {
-        direction = "right";
-    } else if (event.key === "ArrowUp" || event.key === "W") {
-        direction = "up";
-    } else if (event.key === "ArrowDown" || event.key === "S") {
-        direction = "down";
+  if (event.key === "ArrowUp" || event.key === "W") {
+    if (player.y - player.height - 10 >= 0) {
+      player.movePlayer("up", 10);
     };
-  
-  if (direction) {
-    socket.emit("move", direction);
-  };
-});
-
-const players = {};
-
-socket.on("currentPlayers", (serverPlayers) => {
-  Object.assign(players, serverPlayers); // copy existing players from server
-  console.log(players);
-  document.getElementById("player-container-master").innerHTML = "";
-  for (const key in players) {
-    document.getElementById("player-container-master").innerHTML += 
-      `<div class="player-container">
-        <div>
-          <span>
-            Player
-          </span>
-          <span class="stat-value">
-            ${players[key].id}
-          </span>
-        </div>
-        <div>
-          <span>
-            Score:
-          </span>
-          <span class="stat-value">
-            ${players[key].score}
-          </span>
-        </div>
-        <div>
-          <span>
-            Health:
-          </span>
-          <span class="stat-value">
-            ${players[key].health}
-          </span>
-        </div>
-      </div>`
-    }
-});
-
-socket.on("newPlayer", (serverPlayer) => {
-  players[serverPlayer.id] = {
-    x: serverPlayer.x,
-    y: serverPlayer.y,
-    ship: serverPlayer.ship || "ship_1",
-    health: serverPlayer.health,
-    score: serverPlayer.score
-  };
-});
-
-socket.on("playerMoved", (serverPlayer) => {
-  if (players[serverPlayer.id]) { 
-    players[serverPlayer.id] = {
-      x: serverPlayer.x,
-      y: serverPlayer.y,
-      ship: serverPlayer.ship || "ship_1",
-      health: serverPlayer.health,
-      score: serverPlayer.score
+  } else if (event.key === "ArrowDown" || event.key === "S") {
+    if (player.y + player.height + 10 <= canvas.height) {
+      player.movePlayer("down", 10);
     };
-  };
-});
-
-socket.on("removePlayer", (id) => {
-  delete players[id]; // Remove from client
-});
-
-const asteroids = [];
-socket.on("updateAsteroids", (serverAsteroids) => {
-  asteroids.length = 0;
-  asteroids.push(...serverAsteroids);
-});
-
-const stars = [];
-socket.on("updateStars", (serverStars) => {
-  stars.length = 0;
-  stars.push(...serverStars);
-});
-
-const ship_images = {
-  ship_1: new Image(),
-  ship_2: new Image(),
-  ship_3: new Image(),
-  ship_4: new Image()
-};
-
-const star_image = new Image();
-star_image.src = "/assets/star_gold.png"
-
-let images_loaded = 0;
-const total_images = Object.keys(ship_images).length;
-
-for (const key in ship_images) {
-  ship_images[key].src = `/assets/${key}.png`;
-  ship_images[key].onload = () => {
-    images_loaded++;
-    if (images_loaded === total_images) {
-      console.log("All images loaded.");
-      draw(); // Start the drawing loop after all images are loaded
+  } else if (event.key === "ArrowLeft" || event.key === "A") {
+    if (player.x - player.width - 10 >= 0) {
+      player.movePlayer("left", 10);
+    };
+  } else if (event.key === "ArrowRight" || event.key === "D") {
+    if (player.x + player.width + 10 <= canvas.width) {
+      player.movePlayer("right", 10)
     }
-  };
-  ship_images[key].onerror = () => {
-    console.error(`Failed to load image: /assets/${key}.png`);
-  };
-}
+  }
+  socket.emit("player_moved", player);
 
-const asteroid_images = {
-  big: new Image(),
-  med: new Image(),
-  small: new Image()
-};
+});
 
-asteroid_images.big.src = "/assets/big_asteroid.png";
-asteroid_images.med.src = "/assets/med_asteroid.png";
-asteroid_images.small.src = "/assets/small_asteroid.png"
+socket.on("current_players", (server_players) => {
 
-const background_image = new Image();
-background_image.src = "/assets/chatgpt_space_background.webp"
+  players = server_players;
+
+});
+
+setInterval(() => player.collision(collectible), 50);
+setInterval(() => player.calculateRank(players), 50);
+
+const colors_array = ["red", "white", "blue"];
+
+let collectible = null;
+
+socket.on("current_collectible", (server_collectible) => {
+  collectible = new Collectible(server_collectible);
+  console.log("collectible:", collectible)
+});
 
 const draw = () => {
-  
-  context.drawImage(background_image, 0, 0, canvas.width, canvas.height);
 
-  for (const id in players) {
-    const { x, y, ship } = players[id];
+  context.fillStyle = "black";
+  context.clearRect(0, 0, canvas.width, canvas.height);
 
-    if (ship_images[ship] && ship_images[ship].complete) {
-      context.drawImage(ship_images[ship], x, y, 40, 40);
-    } else {
-      console.error(`Image for ship ${ship} not loaded yet!`);
-    }
+  players.forEach(player => {
+    context.fillStyle = colors_array[Math.floor(Math.random() * 3)];
+    context.fillRect(player.x, player.y, 40, 40);
+  })
+
+  if (collectible) { 
+    context.fillStyle = "yellow";
+    context.fillRect(collectible.x, collectible.y, 20, 20);
   }
 
   requestAnimationFrame(draw);
-  
-  // draw asteroids
-  asteroids.forEach(({ x, y, type, size }) => {
-    context.drawImage(asteroid_images[type], x, y, size, size)
-  });
 
-  // draw stars
-  stars.forEach(({ x, y }) => {
-    context.drawImage(star_image, x, y, 15, 15)
-  });
 }
+
+draw();
