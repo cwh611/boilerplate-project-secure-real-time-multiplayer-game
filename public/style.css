@@ -37,7 +37,7 @@ canvas {
 
 .player-container {
   display: flex;
-  justify-content: space-evenly;
+  justify-content: space-between;
   margin-top: 10px;
 }
 
@@ -45,6 +45,10 @@ canvas {
   color: rgba(85, 255, 85, 0.933)
 }
 
+.shield-value {
+  color:rgba(85, 252, 255, 0.933)
+}
+
 span {
-  font-size: 16px
+  font-size: 20px
 }
